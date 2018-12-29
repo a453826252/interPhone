@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/server"
+            android:icon="@drawable/ic_server"
+            android:title="作为服务端"/>
+        <item
+            android:id="@+id/client"
+            android:icon="@drawable/ic_client"
+            android:title="作为客户端"/>
+        <item
+            android:id="@+id/setting"
+            android:icon="@drawable/ic_setting"
+            android:title="设置"/>
+    </group>
+
+    <item android:title="其他">
+        <menu>
+            <item
+                android:id="@+id/share"
+                android:icon="@drawable/ic_menu_share"
+                android:title="Share"/>
+        </menu>
+    </item>
+
+</menu>
