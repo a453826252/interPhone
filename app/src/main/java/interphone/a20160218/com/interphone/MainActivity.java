@@ -20,8 +20,9 @@ import java.util.ArrayList;
 import interphone.a20160218.com.interphone.client.IClient;
 import interphone.a20160218.com.interphone.client.impl.ClientImpl;
 import interphone.a20160218.com.interphone.datahanding.adapter.ScanResultAdapter;
-import interphone.a20160218.com.interphone.wifi.IWifiClientManager;
-import interphone.a20160218.com.interphone.wifi.impl.WifiClientManagerImp;
+import interphone.a20160218.com.interphone.server.IServer;
+import interphone.a20160218.com.interphone.server.impl.ServerImpl;
+import interphone.a20160218.com.interphone.wifi.bean.ApConfig;
 
 public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -35,6 +36,8 @@ public class MainActivity extends BaseActivity
     private NavigationView mNavigationView;
 
     private IClient mClient;
+
+    private IServer mServer;
 
     private ScanResultAdapter adapter;
 
@@ -89,6 +92,7 @@ public class MainActivity extends BaseActivity
         });
         mNavigationView.setNavigationItemSelectedListener(this);
         mClient = new ClientImpl();
+        mServer = new ServerImpl();
         mScanResultList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ScanResultAdapter(this, new ArrayList<ScanResult>(), new ScanResultAdapter.IOnItemClick<ScanResult>() {
             @Override
@@ -122,9 +126,13 @@ public class MainActivity extends BaseActivity
         // Handle navigation view item clicks here.
         switch (item.getItemId()) {
             case R.id.server:
+                ApConfig config = new ApConfig();
+                config.setSSID("对讲服务");
+                config.setPreSharedKey("12345678");
+                mServer.initServer(this, handler, config);
                 break;
             case R.id.client:
-                mClient.init(this,handler);
+                mClient.initClient(this, handler);
                 break;
             case R.id.setting:
                 break;

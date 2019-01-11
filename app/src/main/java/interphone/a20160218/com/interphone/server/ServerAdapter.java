@@ -8,20 +8,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class ServerAdapter implements IServer {
-    @Override
-    public abstract void startServer();
 
     @Override
-    public abstract void shoutDownServer();
+    public void initClient(Activity activity, Handler handler) {
+
+    }
 
     @Override
-    public abstract void init(Activity activity, Handler handler);
+    public void sendData() {
+    }
 
     @Override
-    public abstract void sendData();
-
-    @Override
-    public abstract void reciveData();
+    public void reciveData() {
+    }
 
     @Override
     public void connectServer(ScanResult scanResult) {
@@ -37,4 +36,6 @@ public abstract class ServerAdapter implements IServer {
     public List<ScanResult> getAllScanResult() {
         return new ArrayList<>();
     }
+
+
 }

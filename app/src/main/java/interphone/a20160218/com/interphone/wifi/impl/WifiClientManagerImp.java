@@ -3,12 +3,21 @@ package interphone.a20160218.com.interphone.wifi.impl;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
+import android.os.ResultReceiver;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.widget.EditText;
 
@@ -16,11 +25,16 @@ import com.zlandzbt.tools.jv.runtime_permissions.permission.PermissionCallBack;
 import com.zlandzbt.tools.jv.runtime_permissions.permission.Permissions;
 import com.zlandzbt.tools.jv.utils.UIUtils;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import interphone.a20160218.com.interphone.MainActivity;
+import interphone.a20160218.com.interphone.wifi.IAPManager;
 import interphone.a20160218.com.interphone.wifi.IWifiClientManager;
 import interphone.a20160218.com.interphone.wifi.IWifiMessage;
+import interphone.a20160218.com.interphone.wifi.bean.ApConfig;
 
 public class WifiClientManagerImp implements IWifiClientManager {
 
@@ -59,7 +73,7 @@ public class WifiClientManagerImp implements IWifiClientManager {
             } else if (action.equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
                 int wifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1111);
                 wifiStateChanged(wifiState);
-            }else if(action.equals(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION)){
+            } else if (action.equals(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION)) {
                 int linkWifiResult = intent.getIntExtra(WifiManager.EXTRA_SUPPLICANT_ERROR, 123);
                 if (linkWifiResult == WifiManager.ERROR_AUTHENTICATING) {
                     iWifiMessage.passwordError();
@@ -223,6 +237,7 @@ public class WifiClientManagerImp implements IWifiClientManager {
             case BLOCKED://已阻止
                 iWifiMessage.wifiBlocked();
                 break;
+            default:
         }
     }
 
@@ -243,7 +258,7 @@ public class WifiClientManagerImp implements IWifiClientManager {
                 break;
             case WifiManager.WIFI_STATE_UNKNOWN:
                 iWifiMessage.unKnownError();
-
+            default:
         }
     }
 
@@ -378,5 +393,190 @@ public class WifiClientManagerImp implements IWifiClientManager {
     @Override
     public List<ScanResult> getScanResult() {
         return scanResults;
+    }
+
+    @Override
+    public WifiManager getWifiManagerSystem() {
+        return wifiManagerSystem;
+    }
+
+    public static class AP implements IAPManager {
+
+        private static AP ap = new AP();
+
+        private static Handler sHandler;
+
+        private static Activity sActivity;
+
+        private static IWifiClientManager iWifiClientManager;
+
+        private AP() {
+        }
+
+        private BroadcastReceiver apBroadcast = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if ("android.net.wifi.WIFI_AP_STATE_CHANGED".equals(action)) {
+                    int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, 0);
+                    apState(state);
+                }
+            }
+        };
+
+        public static AP getInstance(Activity activity, Handler handler) {
+            if (iWifiClientManager == null) {
+                synchronized (AP.class) {
+                    if (iWifiClientManager == null) {
+                        iWifiClientManager = WifiClientManagerImp.getInstance(activity, handler);
+                    }
+                }
+            }
+            sHandler = handler;
+            sActivity = activity;
+            return ap;
+        }
+
+
+        private void apState(int state) {
+            switch (state) {
+                case 13:
+                    iWifiMessage.openApSuccess();
+                    break;
+                case 11:
+                    iWifiMessage.closeApSuccess();
+                    break;
+                default:
+            }
+        }
+
+        @Override
+        public void openAp(ApConfig config) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED");
+            sActivity.registerReceiver(apBroadcast, filter);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!Settings.System.canWrite(sActivity)) {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                    intent.setData(Uri.parse("package:" + sActivity.getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    sActivity.startActivity(intent);
+                    return;
+                }
+            }
+
+            iWifiClientManager.closeWifi();
+            if (Build.VERSION.SDK_INT >= 26) {
+                final Context context = sActivity;
+                sActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        enableApForAndroidO(context, true);
+                    }
+                });
+            } else {
+                enableApBlebowO(config, true);
+            }
+
+        }
+
+        @Override
+        public void closeAp(ApConfig config) {
+            if (config == null) {
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= 26) {
+                final Context context = sActivity;
+                sActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        enableApForAndroidO(context, false);
+                    }
+                });
+            } else {
+                enableApBlebowO(config, true);
+            }
+            sActivity.unregisterReceiver(apBroadcast);
+        }
+
+        public void release() {
+            sHandler = null;
+            sActivity = null;
+            iWifiClientManager = null;
+        }
+
+        /**
+         * 8.0以下
+         */
+        private void enableApBlebowO(ApConfig config, boolean enable) {
+            WifiConfiguration ap = null;
+            IWifiMessage wifiMessageImp = new WifiMessageImp(sActivity);
+            try {
+                // 热点的配置类
+                WifiConfiguration apConfig = new WifiConfiguration();
+                // 配置热点的名称(可以在名字后面加点随机数什么的)
+                apConfig.SSID = config.getSSID();
+                apConfig.preSharedKey = config.getPreSharedKey();
+                apConfig.allowedKeyManagement.set(config.getEncryption());
+
+                Method method = iWifiClientManager.getWifiManagerSystem().getClass().getMethod("setWifiApEnabled", WifiConfiguration.class, Boolean.TYPE);
+                // 返回热点打开状态
+                boolean isSuccess = (Boolean) method.invoke(iWifiClientManager.getWifiManagerSystem(), apConfig, true);
+                if (!isSuccess) {
+                    if (enable) {
+                        wifiMessageImp.openApFailed();
+                    } else {
+                        wifiMessageImp.closeApFailed();
+                    }
+
+                }
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        /**
+         * 8.0 开启/关闭热点方法
+         * 注意：这个方法开启的热点名称和密码是手机系统里面默认的那个
+         *
+         * @param context
+         */
+        private void enableApForAndroidO(Context context, boolean isEnable) {
+            ConnectivityManager connManager = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+
+            Field iConnMgrField = null;
+            IWifiMessage wifiMessageImp = new WifiMessageImp((Activity) context);
+            try {
+                iConnMgrField = connManager.getClass().getDeclaredField("mService");
+                iConnMgrField.setAccessible(true);
+                Object iConnMgr = iConnMgrField.get(connManager);
+                Class<?> iConnMgrClass = Class.forName(iConnMgr.getClass().getName());
+
+                if (isEnable) {
+                    Method startTethering = iConnMgrClass.getMethod("startTethering", int.class, ResultReceiver.class, boolean.class);
+                    startTethering.invoke(iConnMgr, 0, null, true);
+                } else {
+                    Method startTethering = iConnMgrClass.getMethod("stopTethering", int.class);
+                    startTethering.invoke(iConnMgr, 0);
+                }
+                return;
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            if (isEnable) {
+                wifiMessageImp.openApFailed();
+            } else {
+                wifiMessageImp.closeApFailed();
+            }
+        }
     }
 }

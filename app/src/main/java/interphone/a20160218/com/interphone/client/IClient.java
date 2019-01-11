@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface IClient {
 
-    void init(Activity activity, Handler handler);
+    void initClient(Activity activity, Handler handler);
 
     void sendData();
 

@@ -19,6 +19,7 @@ public interface IWifiMessage {
     void wifiConnected();
 
     void wifiHasBeenConnected();
+
     /**
      * wifi连接被暂停
      */
@@ -51,19 +52,35 @@ public interface IWifiMessage {
 
     void closeWifiFailed();
 
-    /***************扫描信号************/
+    /**
+     * ===============扫描================
+     *
+     * @return
+     */
     ProgressDialog wifiScan();
 
     void wifiScanFaild();
 
-    /**********password****************/
+    /**
+     * ===============密码================
+     */
     void passwordShouldNotBeEmpty();
 
     void passwordError();
 
-    /**********other****************/
+    /**
+     * ===============其他================
+     */
     void unKnownError();
 
+    /**
+     * ===============热点================
+     */
+    void openApSuccess();
 
+    void closeApSuccess();
 
+    void openApFailed();
+
+    void closeApFailed();
 }

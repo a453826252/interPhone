@@ -12,9 +12,10 @@ import interphone.a20160218.com.interphone.wifi.impl.WifiClientManagerImp;
 
 public class ClientImpl implements IClient {
     private IWifiClientManager wifiClientManager;
+
     @Override
-    public void init(Activity activity, Handler handler) {
-        wifiClientManager = WifiClientManagerImp.getInstance(activity,handler);
+    public void initClient(Activity activity, Handler handler) {
+        wifiClientManager = WifiClientManagerImp.getInstance(activity, handler);
         wifiClientManager.openWifi();
     }
 
@@ -40,6 +41,6 @@ public class ClientImpl implements IClient {
 
     @Override
     public List<ScanResult> getAllScanResult() {
-      return  wifiClientManager.getScanResult();
+        return wifiClientManager.getScanResult();
     }
 }

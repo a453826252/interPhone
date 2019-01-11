@@ -1,7 +1,7 @@
 package interphone.a20160218.com.interphone.wifi;
 
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 
 import java.util.List;
 
@@ -16,4 +16,6 @@ public interface IWifiClientManager {
     public void connect(ScanResult scanResult);
 
     public List<ScanResult> getScanResult();
+
+    WifiManager getWifiManagerSystem();
 }
