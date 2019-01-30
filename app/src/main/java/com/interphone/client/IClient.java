@@ -8,15 +8,19 @@ import java.util.List;
 
 public interface IClient {
 
-    void initClient(Activity activity, Handler handler);
+    public void initClient(Activity activity, Handler handler);
 
-    void sendData();
+    public void sendData(byte[] data,int size);
 
-    void reciveData();
+    public void openReceiveDataServer();
 
-    void connectServer(ScanResult scanResult);
+    public boolean isReceiveServerOpen();
 
-    void disConnectFromServer();
+    public void closeReceiveDataServer();
 
-    List<ScanResult> getAllScanResult();
+    public void connectServer(ScanResult scanResult);
+
+    public void disConnectFromServer();
+
+    public List<ScanResult> getAllScanResult();
 }

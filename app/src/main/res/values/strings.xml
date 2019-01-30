@@ -6,4 +6,6 @@
     <string name="nav_header_subtitle">android.studio@android.com</string>
     <string name="nav_header_desc">Navigation header</string>
     <string name="action_settings">Settings</string>
+    <string name="tipsServer">1.开启热点或右滑选择“作为服务端” \n2.让朋友连接你的热点 \n3.点击右下角按钮开始使用</string>
+    <string name="tipsClient">1.连接朋友热点或右滑选择“作为客户端”，连接朋友的热点 \n2.点击右下角按钮开始使用</string>
 </resources>

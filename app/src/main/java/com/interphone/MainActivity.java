@@ -13,10 +13,9 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.RelativeLayout;
 
-import com.interphone.audio.IAudioPlayer;
 import com.interphone.audio.IAudioRecord;
-import com.interphone.audio.impl.AudioPlayerManager;
 import com.interphone.audio.impl.AudioRecordManager;
 import com.interphone.client.IClient;
 import com.interphone.client.impl.ClientImpl;
@@ -24,16 +23,19 @@ import com.interphone.datahanding.adapter.ScanResultAdapter;
 import com.interphone.server.IServer;
 import com.interphone.server.impl.ServerImpl;
 import com.interphone.wifi.bean.ApConfig;
+import com.zlandzbt.tools.jv.utils.UIUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 
 public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+
     private DrawerLayout mDrawer;
 
     private RecyclerView mScanResultList;
+
+    private RelativeLayout tips;
 
     private FloatingActionButton mFab;
 
@@ -43,26 +45,21 @@ public class MainActivity extends BaseActivity
 
     private IServer mServer;
 
+    private IAudioRecord mAudioRecord;
+
     private ScanResultAdapter adapter;
 
     public final static int MSG_WIFI_SCAN_FINISH = 0;
-    private Handler handler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_WIFI_SCAN_FINISH:
-                    adapter.getData().clear();
-                    adapter.addAll(mClient.getAllScanResult());
-                    mScanResultList.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            adapter.notifyDataSetChanged();
-                        }
-                    });
-                    break;
-            }
-        }
-    };
+
+    public static final int MSG_OPEN_AP_SUCCESS = 1;
+
+    public static final int MSG_CLOSE_AP_SUCCESS = 2;
+
+    public static final int MSG_CONNECT_SUCCESS = 3;
+
+    public static final int MSG_DISCONNECT_SUCCESS = 4;
+
+    private Handler handler;
 
 
     @Override
@@ -75,6 +72,7 @@ public class MainActivity extends BaseActivity
 
     private void initView() {
         mScanResultList = f(R.id.scanResultList);
+        tips = f(R.id.tipsContainer);
         mFab = f(R.id.fab);
         mDrawer = f(R.id.drawer_layout);
 //        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -87,28 +85,45 @@ public class MainActivity extends BaseActivity
     }
 
     private void initEvent() {
-        mFab.setOnClickListener(new View.OnClickListener() {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            IAudioRecord recordManager = new AudioRecordManager(new AudioRecordManager.IRecordData() {
-                @Override
-                public void recordData(IAudioRecord record, byte[] data, int size) {
-                    //outputStream.play(data, 0, size);
-                    mPlayer.play(data, size);
+        handler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what) {
+                    case MSG_WIFI_SCAN_FINISH:
+                        tips.setVisibility(View.GONE);
+                        mScanResultList.setVisibility(View.VISIBLE);
+                        adapter.getData().clear();
+                        adapter.addAll(mClient.getAllScanResult());
+                        mScanResultList.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                adapter.notifyDataSetChanged();
+                            }
+                        });
+                        break;
+                    case MSG_OPEN_AP_SUCCESS:
+                        UIUtils.showAlertMessage(MainActivity.this, "提示", "热点开启成功，点击右下角按钮开启监听，请告知你的同伴连接至该热点");
+                        break;
+                    case MSG_CLOSE_AP_SUCCESS:
+                        mServer.closeReceiveDataServer();
+                        break;
+                    case MSG_CONNECT_SUCCESS:
+                        mClient.openReceiveDataServer();
+                        break;
+                    case MSG_DISCONNECT_SUCCESS:
+                        mClient.closeReceiveDataServer();
+                    default:
                 }
-            });
-            IAudioPlayer mPlayer = new AudioPlayerManager();
+            }
+        };
+
+
+        mFab.setOnClickListener(new View.OnClickListener() {
 
             @Override
-            public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAction("Action", null).show();
+            public void onClick(View v) {
+                onFabClick();
 
-                if (recordManager.isRecording()) {
-                    recordManager.stopReord();
-                } else {
-                    outputStream.reset();
-                    recordManager.startRecord();
-                }
             }
         });
         mNavigationView.setNavigationItemSelectedListener(this);
@@ -140,6 +155,21 @@ public class MainActivity extends BaseActivity
         }
     }
 
+    private void onFabClick() {
+        if (mServer.isReceiveServerOpen()) {
+            mServer.closeReceiveDataServer();
+        } else {
+            mServer.openReceiveDataServer();
+        }
+        if (mAudioRecord == null) {
+            initAudioRecord();
+        }
+        if (mAudioRecord.isRecording()) {
+            mAudioRecord.stopRecord();
+        } else {
+            mAudioRecord.startRecord();
+        }
+    }
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
@@ -150,7 +180,7 @@ public class MainActivity extends BaseActivity
                 ApConfig config = new ApConfig();
                 config.setSSID("对讲服务");
                 config.setPreSharedKey("12345678");
-                mServer.initServer(this, handler, config);
+                mServer.openServer(this, handler, config);
                 break;
             case R.id.client:
                 mClient.initClient(this, handler);
@@ -164,5 +194,13 @@ public class MainActivity extends BaseActivity
         return true;
     }
 
+    private void initAudioRecord() {
+        mAudioRecord = new AudioRecordManager(new AudioRecordManager.IRecordData() {
+            @Override
+            public void recordData(IAudioRecord record, byte[] data, int size) {
+                mClient.sendData(data, size);
+            }
+        }, this);
+    }
 
 }

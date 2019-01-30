@@ -17,5 +17,7 @@ public interface IWifiClientManager {
 
     public List<ScanResult> getScanResult();
 
+    public String getServerIp();
+
     WifiManager getWifiManagerSystem();
 }

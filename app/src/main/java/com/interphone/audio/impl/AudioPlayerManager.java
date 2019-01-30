@@ -4,12 +4,13 @@ import android.media.AudioTrack;
 import android.util.Log;
 
 import com.dgk.myaudiodemo.util.Speex;
+import com.interphone.BaseActivity;
 import com.interphone.audio.IAudioConfig;
 import com.interphone.audio.IAudioPlayer;
 
 public class AudioPlayerManager implements IAudioPlayer, IAudioConfig {
 
-    private final String TAG = "【AudioPlayerManager】";
+    private final String TAG = BaseActivity.TAG;
 
     private AudioTrack mAudioPlayer;
 
@@ -80,7 +81,17 @@ public class AudioPlayerManager implements IAudioPlayer, IAudioConfig {
                 }
             } else {
                 Log.i(TAG, "成功写入数据：" + size + " Shorts");
+                mAudioPlayer.play();
             }
+        }
+    }
+
+    @Override
+    public void release() {
+        if (mAudioPlayer != null) {
+            mAudioPlayer.stop();
+            mAudioPlayer.release();
+            mAudioPlayer = null;
         }
     }
 }

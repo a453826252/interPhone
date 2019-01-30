@@ -9,6 +9,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.DhcpInfo;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.ScanResult;
@@ -21,20 +22,22 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.widget.EditText;
 
-import com.zlandzbt.tools.jv.runtime_permissions.permission.PermissionCallBack;
-import com.zlandzbt.tools.jv.runtime_permissions.permission.Permissions;
-import com.zlandzbt.tools.jv.utils.UIUtils;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.List;
-
 import com.interphone.MainActivity;
 import com.interphone.wifi.IAPManager;
 import com.interphone.wifi.IWifiClientManager;
 import com.interphone.wifi.IWifiMessage;
 import com.interphone.wifi.bean.ApConfig;
+import com.zlandzbt.tools.jv.runtime_permissions.permission.PermissionCallBack;
+import com.zlandzbt.tools.jv.runtime_permissions.permission.Permissions;
+import com.zlandzbt.tools.jv.utils.UIUtils;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 public class WifiClientManagerImp implements IWifiClientManager {
 
@@ -221,6 +224,7 @@ public class WifiClientManagerImp implements IWifiClientManager {
                 break;
             case CONNECTED://已连接
                 iWifiMessage.wifiConnected();
+                sHandlerToMain.sendEmptyMessage(MainActivity.MSG_CONNECT_SUCCESS);
                 break;
             case SUSPENDED://已暂停
                 iWifiMessage.wifiSuspended();
@@ -230,6 +234,7 @@ public class WifiClientManagerImp implements IWifiClientManager {
                 break;
             case DISCONNECTED://已断开
                 iWifiMessage.wifiDisconnected();
+                sHandlerToMain.sendEmptyMessage(MainActivity.MSG_DISCONNECT_SUCCESS);
                 break;
             case FAILED://连接失败
                 iWifiMessage.wifiConnectFailed();
@@ -299,7 +304,14 @@ public class WifiClientManagerImp implements IWifiClientManager {
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
-        mContext.registerReceiver(scanResultsReceiver, filter);
+        try {
+            mContext.registerReceiver(scanResultsReceiver, filter);
+        } catch (Exception e) {
+            mContext.unregisterReceiver(scanResultsReceiver);
+        } finally {
+            mContext.registerReceiver(scanResultsReceiver, filter);
+        }
+
         if (!wifiManagerSystem.isWifiEnabled()) {
             iWifiMessage.openWifi();
             return wifiManagerSystem.setWifiEnabled(true);
@@ -396,11 +408,22 @@ public class WifiClientManagerImp implements IWifiClientManager {
     }
 
     @Override
+    public String getServerIp() {
+        DhcpInfo info = wifiManagerSystem.getDhcpInfo();
+        if (info != null) {
+            int ip = info.serverAddress;
+            return (ip & 0xff) + "." + ((ip >> 8) & 0xff) + "." + ((ip >> 16) & 0xff) + "." + ((ip >> 24) & 0xff);
+        }
+        return "";
+    }
+
+    @Override
     public WifiManager getWifiManagerSystem() {
         return wifiManagerSystem;
     }
 
     public static class AP implements IAPManager {
+
 
         private static AP ap = new AP();
 
@@ -442,9 +465,11 @@ public class WifiClientManagerImp implements IWifiClientManager {
             switch (state) {
                 case 13:
                     iWifiMessage.openApSuccess();
+                    sHandler.sendEmptyMessage(MainActivity.MSG_OPEN_AP_SUCCESS);
                     break;
                 case 11:
                     iWifiMessage.closeApSuccess();
+                    sHandler.sendEmptyMessage(MainActivity.MSG_CLOSE_AP_SUCCESS);
                     break;
                 default:
             }
@@ -497,6 +522,28 @@ public class WifiClientManagerImp implements IWifiClientManager {
                 enableApBlebowO(config, true);
             }
             sActivity.unregisterReceiver(apBroadcast);
+        }
+
+        @Override
+        public List<String> getClientIps() {
+            ArrayList<String> connectedIP = new ArrayList<String>();
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(
+                        "/proc/net/arp"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String[] splitted = line.split(" +");
+                    if (splitted != null && splitted.length >= 4) {
+                        String ip = splitted[0];
+                        if (!"IP".equalsIgnoreCase(ip)) {
+                            connectedIP.add(ip);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return connectedIP;
         }
 
         public void release() {

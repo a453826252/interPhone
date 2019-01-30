@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Handler;
 
 import com.interphone.server.ServerAdapter;
+import com.interphone.socket.SocketServerReceive;
 import com.interphone.wifi.bean.ApConfig;
 import com.interphone.wifi.impl.WifiClientManagerImp;
 
@@ -11,10 +12,6 @@ public class ServerImpl extends ServerAdapter {
     private WifiClientManagerImp.AP ap;
     private ApConfig apConfig;
 
-    @Override
-    public void startServer() {
-
-    }
 
     @Override
     public void shoutDownServer() {
@@ -23,17 +20,12 @@ public class ServerImpl extends ServerAdapter {
     }
 
     @Override
-    public void dataTransform() {
-
-    }
-
-    @Override
     public boolean closeConnection(int id) {
         return false;
     }
 
     @Override
-    public void initServer(Activity activity, Handler handler, ApConfig apConfig) {
+    public void openServer(Activity activity, Handler handler, ApConfig apConfig) {
         //开启热点
         ap = WifiClientManagerImp.AP.getInstance(activity, handler);
         this.apConfig = apConfig;

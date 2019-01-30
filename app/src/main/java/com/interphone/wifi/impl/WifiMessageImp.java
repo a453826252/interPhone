@@ -4,13 +4,14 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.util.Log;
 
+import com.interphone.BaseActivity;
 import com.zlandzbt.tools.jv.utils.UIUtils;
 
 import com.interphone.wifi.IWifiMessage;
 
 public class WifiMessageImp implements IWifiMessage {
     Activity mContext;
-    static final String TAG = WifiMessageImp.class.getName();
+    static final String TAG = BaseActivity.TAG;
 
     public WifiMessageImp(Activity activity) {
         mContext = activity;

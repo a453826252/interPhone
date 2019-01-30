@@ -1,13 +1,19 @@
 package com.interphone.audio.impl;
 
+import android.app.Activity;
 import android.media.AudioRecord;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.dgk.myaudiodemo.util.Speex;
+import com.interphone.BaseActivity;
+import com.interphone.MainActivity;
 import com.interphone.audio.IAudioConfig;
+import com.interphone.audio.IAudioMessage;
 import com.interphone.audio.IAudioRecord;
+import com.interphone.wifi.IWifiMessage;
+import com.interphone.wifi.impl.WifiMessageImp;
 import com.zlandzbt.tools.jv.utils.ThreadUtils;
 
 import java.util.concurrent.Executors;
@@ -17,17 +23,20 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
 
     private static final int SPEEX_DATA_SIZE = 20;
 
-    private static final String TAG = "【AudioRecordManager】";
+    private static final String TAG = BaseActivity.TAG;
 
     private int mRecordBufferSize;
 
     private AudioRecord mAudioRecord;
 
-    private boolean mIsBusy = false, isWorking = true;
+    private IAudioMessage mIAudioMessage;
+
+    private boolean isWorking = false;
 
     private IRecordData mIRecordData;
 
     private Speex mSpeex;
+
 
     /**
      * 音频帧数据长度
@@ -38,8 +47,10 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
      */
     private int audioShortArrayLength = 160;
 
-    public AudioRecordManager(IRecordData recordData) {
+
+    public AudioRecordManager(IRecordData recordData,Activity activity) {
         this.mIRecordData = recordData;
+        mIAudioMessage = new AudioMessageImpl(activity);
         mSpeex = new Speex();
         mSpeex.open(Speex.DEFAULT_COMPRESSION);
         init();
@@ -78,7 +89,7 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
 
     @Override
     public void startRecord() {
-        if (mIsBusy) {
+        if (isWorking) {
             Log.e(TAG, "请等待当前录制结束");
             return;
         }
@@ -86,7 +97,6 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
             init();
         }
         isWorking = true;
-        mIsBusy = true;
         ThreadUtils.executor(new Runnable() {
             private short[] recordData = new short[audioShortArrayLength];
             private byte[] encodedbytes = new byte[SPEEX_DATA_SIZE];
@@ -94,6 +104,8 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
             @Override
             public void run() {
                 mAudioRecord.startRecording();
+                Log.i(TAG, "开始录制音频");
+                mIAudioMessage.startToRecord();
                 while (isWorking) {
                     if (mAudioRecord == null) {
                         Log.e(TAG, "mAudioRecord为null");
@@ -125,21 +137,21 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
     }
 
     @Override
-    public void stopReord() {
+    public void stopRecord() {
         isWorking = false;
         ThreadUtils.releaseThreadPool(true);
-        mIsBusy = false;
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                mAudioRecord.stop();
-                mAudioRecord.release();
+                if (mAudioRecord != null) {
+                    mAudioRecord.stop();
+                    mAudioRecord.release();
+                    mAudioRecord = null;
+                }
 
-
-                mAudioRecord = null;
             }
         }, 500);
-
+        mIAudioMessage.stopRecord();
     }
 
     public static interface IRecordData {
@@ -148,6 +160,6 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
 
     @Override
     public boolean isRecording() {
-        return mIsBusy;
+        return isWorking;
     }
 }
