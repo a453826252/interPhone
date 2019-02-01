@@ -477,6 +477,9 @@ public class WifiClientManagerImp implements IWifiClientManager {
 
         @Override
         public void openAp(ApConfig config) {
+            if (isWifiApOpen()) {
+                return;
+            }
             IntentFilter filter = new IntentFilter();
             filter.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED");
             sActivity.registerReceiver(apBroadcast, filter);
@@ -625,5 +628,37 @@ public class WifiClientManagerImp implements IWifiClientManager {
                 wifiMessageImp.closeApFailed();
             }
         }
+
+        private boolean isWifiApOpen() {
+            try {
+                WifiManager manager = iWifiClientManager.getWifiManagerSystem();
+                //通过放射获取 getWifiApState()方法
+                Method method = manager.getClass().getDeclaredMethod("getWifiApState");
+                //调用getWifiApState() ，获取返回值
+                int state = (int) method.invoke(manager);
+                //通过放射获取 WIFI_AP的开启状态属性
+                Field field1 = manager.getClass().getDeclaredField("WIFI_AP_STATE_ENABLED");
+                Field field2 = manager.getClass().getDeclaredField("WIFI_AP_STATE_ENABLING");
+                //获取属性值
+                int value = (int) field1.get(manager);
+                int value2 = (int) field2.get(manager);
+                //判断是否开启
+                if (state == value || state == value2) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
     }
+
 }
