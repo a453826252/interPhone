@@ -1,8 +1,17 @@
 package com.interphone;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -15,17 +24,19 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.RelativeLayout;
 
-import com.interphone.audio.IAudioRecord;
-import com.interphone.audio.impl.AudioRecordManager;
 import com.interphone.client.IClient;
 import com.interphone.client.impl.ClientImpl;
 import com.interphone.datahanding.adapter.ScanResultAdapter;
 import com.interphone.server.IServer;
 import com.interphone.server.impl.ServerImpl;
+import com.interphone.services.AudioService;
+import com.interphone.services.SocketServices;
 import com.interphone.wifi.bean.ApConfig;
+import com.interphone.wifi.bean.ConnectConfig;
 import com.zlandzbt.tools.jv.utils.UIUtils;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -41,13 +52,15 @@ public class MainActivity extends BaseActivity
 
     private NavigationView mNavigationView;
 
-    private IClient mClient;
+    private ScanResultAdapter adapter;
+
+    private AudioService.AudioBinder mAudioBinder;
+
+    private SocketServices.SocketBinder mSocketBinder;
 
     private IServer mServer;
 
-    private IAudioRecord mAudioRecord;
-
-    private ScanResultAdapter adapter;
+    private IClient mClient;
 
     public final static int MSG_WIFI_SCAN_FINISH = 0;
 
@@ -61,13 +74,59 @@ public class MainActivity extends BaseActivity
 
     private Handler handler;
 
+    private BroadcastReceiver wifiReceive = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(intent.getAction())) {
+                NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                if (info.getDetailedState() == NetworkInfo.DetailedState.CONNECTED) {
+                    getLocalIp();
+                }
+            }
+        }
+    };
+
+    private ServiceConnection audioConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mAudioBinder = (AudioService.AudioBinder) service;
+        }
+    };
+
+    private ServiceConnection socketConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mSocketBinder = (SocketServices.SocketBinder) service;
+        }
+    };
+    private WifiManager mWifiManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        bindService(new Intent(this, AudioService.class), audioConnection, 0);
+        bindService(new Intent(this, SocketServices.class), socketConnection, 0);
+        startService(new Intent(this, AudioService.class));
+        startService(new Intent(this, SocketServices.class));
+        mWifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         initView();
         initEvent();
+    }
+
+    private void getLocalIp() {
+        ConnectConfig.LOCAL_IP = mWifiManager.getConnectionInfo().getIpAddress();
+        ConnectConfig.LOCAL_IP_String = String.format(Locale.getDefault(), "%d.%d.%d.%d", (ConnectConfig.LOCAL_IP & 0xff), (ConnectConfig.LOCAL_IP >> 8 & 0xff), (ConnectConfig.LOCAL_IP >> 16 & 0xff), (ConnectConfig.LOCAL_IP >> 24 & 0xff));
     }
 
     private void initView() {
@@ -105,13 +164,12 @@ public class MainActivity extends BaseActivity
                         UIUtils.showAlertMessage(MainActivity.this, "提示", "热点开启成功，点击右下角按钮开启监听，请告知你的同伴连接至该热点");
                         break;
                     case MSG_CLOSE_AP_SUCCESS:
-                        mServer.closeReceiveDataServer();
-                        break;
-                    case MSG_CONNECT_SUCCESS:
-                        mClient.openReceiveDataServer();
-                        break;
                     case MSG_DISCONNECT_SUCCESS:
-                        mClient.closeReceiveDataServer();
+                        mSocketBinder.closeClientReceiveSocket(mClient);
+                    case MSG_CONNECT_SUCCESS:
+                        mSocketBinder.openClientReceiveSocket(mClient);
+                        break;
+
                     default:
                 }
             }
@@ -144,6 +202,10 @@ public class MainActivity extends BaseActivity
         mScanResultList.setAdapter(adapter);
 
         mScanResultList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+        if (mWifiManager.isWifiEnabled()) {
+            getLocalIp();
+        }
+        registerReceiver(wifiReceive, new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
     }
 
     @Override
@@ -156,19 +218,11 @@ public class MainActivity extends BaseActivity
     }
 
     private void onFabClick() {
-        if (mServer.isReceiveServerOpen()) {
-            mServer.closeReceiveDataServer();
-        } else {
-            mServer.openReceiveDataServer();
+        mSocketBinder.toggleClientReceiveSocket(mClient);
+        if (!mAudioBinder.hasInited()) {
+            mAudioBinder.initAudioRecord(this, mClient);
         }
-        if (mAudioRecord == null) {
-            initAudioRecord();
-        }
-        if (mAudioRecord.isRecording()) {
-            mAudioRecord.stopRecord();
-        } else {
-            mAudioRecord.startRecord();
-        }
+        mAudioBinder.toggleRecord();
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
@@ -194,13 +248,9 @@ public class MainActivity extends BaseActivity
         return true;
     }
 
-    private void initAudioRecord() {
-        mAudioRecord = new AudioRecordManager(new AudioRecordManager.IRecordData() {
-            @Override
-            public void recordData(IAudioRecord record, byte[] data, int size) {
-                mClient.sendData(data, size);
-            }
-        }, this);
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(wifiReceive);
     }
-
 }

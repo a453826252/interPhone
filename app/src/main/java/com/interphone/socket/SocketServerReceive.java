@@ -13,6 +13,7 @@ import com.zlandzbt.tools.jv.utils.ThreadUtils;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
@@ -40,7 +41,11 @@ public class SocketServerReceive {
     public void startToReceive() {
         Log.i(TAG, "开启接收socket");
         try {
-            mDatagramSocket = new DatagramSocket(ConnectConfig.PORT);
+            if (mDatagramSocket == null) {
+                mDatagramSocket = new DatagramSocket(null);
+                mDatagramSocket.setReuseAddress(true);
+                mDatagramSocket.bind(new InetSocketAddress(ConnectConfig.PORT));
+            }
             isReceive = true;
             ThreadUtils.executor(new Runnable() {
                 @Override
@@ -78,16 +83,17 @@ public class SocketServerReceive {
 
     private void receiveData() throws Exception {
 
-        //大小根据[AudioRecordManager]的[encodedbytes]数组大小决定
-        byte[] buf = new byte[20];
+        //大小根据[AudioRecordManager]的[encodedbytes]数组大小决定,后四位为附加信息——发送端的IP地址
+        byte[] buf = new byte[24];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         while (isReceive) {
             mDatagramSocket.receive(packet);
             String remoteAddress = packet.getAddress().getHostAddress();
-            if ("127.0.0.1".equalsIgnoreCase(remoteAddress) || "192.168.43.1".equalsIgnoreCase(remoteAddress)) {
+            if ("127.0.0.1".equalsIgnoreCase(remoteAddress) || "192.168.43.1".equalsIgnoreCase(remoteAddress) || ConnectConfig.LOCAL_IP_String.equalsIgnoreCase(remoteAddress)) {
                 //本机发出的，丢弃
                 continue;
             }
+            Log.i(TAG, "接收到数据");
             byte[] data = packet.getData();
             mPlayer.play(data, data.length);
         }

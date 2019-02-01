@@ -21,4 +21,14 @@ public class ConnectConfig {
      * 连接端口
      */
     public static final int PORT = 2016;
+
+    /**
+     * 本地IP地址,int
+     */
+    public static int LOCAL_IP = 0;
+
+    /**
+     * 本地IP,String   xxx.xxx.xxx.xxx
+     */
+    public static String LOCAL_IP_String = "";
 }

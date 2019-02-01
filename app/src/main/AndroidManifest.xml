@@ -32,6 +32,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".services.AudioService"
+            android:enabled="true"
+            android:exported="true">
+        </service>
+        <service
+            android:name=".services.SocketServices"
+            android:enabled="true"
+            android:exported="true">
+        </service>
     </application>
 
 </manifest>
