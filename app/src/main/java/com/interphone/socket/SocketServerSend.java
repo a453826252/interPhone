@@ -18,7 +18,7 @@ public class SocketServerSend {
             if (mDatagramSocket == null) {
                 mDatagramSocket = new DatagramSocket();
             }
-            DatagramPacket packet = new DatagramPacket(data, size, InetAddress.getByName("192.168.5.255"), ConnectConfig.PORT);
+            DatagramPacket packet = new DatagramPacket(data, size, InetAddress.getByName("192.168.43.255"), ConnectConfig.PORT);
             mDatagramSocket.send(packet);
             Log.i(TAG, "发送数据:" + data.length);
         } catch (Exception e) {

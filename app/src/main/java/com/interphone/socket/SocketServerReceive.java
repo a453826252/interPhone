@@ -83,8 +83,8 @@ public class SocketServerReceive {
 
     private void receiveData() throws Exception {
 
-        //大小根据[AudioRecordManager]的[encodedbytes]数组大小决定,后四位为附加信息——发送端的IP地址
-        byte[] buf = new byte[24];
+        //大小根据[AudioRecordManager]的[encodedbytes]数组大小决定
+        byte[] buf = new byte[20];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         while (isReceive) {
             mDatagramSocket.receive(packet);
