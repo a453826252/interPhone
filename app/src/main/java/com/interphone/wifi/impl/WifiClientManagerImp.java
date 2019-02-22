@@ -308,7 +308,6 @@ public class WifiClientManagerImp implements IWifiClientManager {
             mContext.registerReceiver(scanResultsReceiver, filter);
         } catch (Exception e) {
             mContext.unregisterReceiver(scanResultsReceiver);
-        } finally {
             mContext.registerReceiver(scanResultsReceiver, filter);
         }
 

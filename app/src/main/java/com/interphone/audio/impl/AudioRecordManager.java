@@ -1,6 +1,7 @@
 package com.interphone.audio.impl;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.media.AudioRecord;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -8,13 +9,12 @@ import android.util.Log;
 
 import com.dgk.myaudiodemo.util.Speex;
 import com.interphone.BaseActivity;
-import com.interphone.MainActivity;
 import com.interphone.audio.IAudioConfig;
 import com.interphone.audio.IAudioMessage;
 import com.interphone.audio.IAudioRecord;
-import com.interphone.wifi.IWifiMessage;
-import com.interphone.wifi.impl.WifiMessageImp;
+import com.interphone.headset.bluetooth.BlueToothHeadeSetManager;
 import com.zlandzbt.tools.jv.utils.ThreadUtils;
+import com.zlandzbt.tools.jv.utils.UIUtils;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -37,6 +37,7 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
 
     private Speex mSpeex;
 
+    private Activity mActivity;
 
     /**
      * 音频帧数据长度
@@ -46,11 +47,13 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
      * 即每个音频帧的数据大小为 320个字节，或者为160个Short。
      */
     private int audioShortArrayLength = 160;
+    private BlueToothHeadeSetManager mBlueToothHeadeSetManager;
 
 
-    public AudioRecordManager(IRecordData recordData,Activity activity) {
+    public AudioRecordManager(IRecordData recordData, Activity activity) {
         this.mIRecordData = recordData;
         mIAudioMessage = new AudioMessageImpl(activity);
+        mActivity = activity;
         mSpeex = new Speex();
         mSpeex.open(Speex.DEFAULT_COMPRESSION);
         init();
@@ -97,6 +100,24 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
             init();
         }
         isWorking = true;
+        mBlueToothHeadeSetManager = BlueToothHeadeSetManager.getInstance(mActivity);
+        if (mBlueToothHeadeSetManager.isBluetoothHeadsetConnected()) {
+            mBlueToothHeadeSetManager.startAudioRecord(new BlueToothHeadeSetManager.startAudioRecordCallBack() {
+                ProgressDialog mProgressDialog = UIUtils.showLoading(mActivity, "正在连接到蓝牙耳机信道");
+
+                @Override
+                public void success() {
+                    mProgressDialog.dismiss();
+                    UIUtils.showToast(mActivity.getApplicationContext(), "连接成功");
+                }
+
+                @Override
+                public void fail(String msg) {
+                    mProgressDialog.dismiss();
+                    UIUtils.showAlertMessage(mActivity, "连接蓝牙信道失败", msg);
+                }
+            });
+        }
         ThreadUtils.executor(new Runnable() {
             private short[] recordData = new short[audioShortArrayLength];
             private byte[] encodedbytes = new byte[SPEEX_DATA_SIZE];
@@ -151,6 +172,7 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
 
             }
         }, 500);
+        mBlueToothHeadeSetManager.stopAudioRecord();
         mIAudioMessage.stopRecord();
     }
 

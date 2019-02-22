@@ -213,7 +213,10 @@ public class MainActivity extends BaseActivity
         if (mDrawer.isDrawerOpen(GravityCompat.START)) {
             mDrawer.closeDrawer(GravityCompat.START);
         } else {
-            super.onBackPressed();
+            Intent i = new Intent(Intent.ACTION_MAIN);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            i.addCategory(Intent.CATEGORY_HOME);
+            startActivity(i);
         }
     }
 
@@ -248,9 +251,11 @@ public class MainActivity extends BaseActivity
         return true;
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(wifiReceive);
+
     }
 }
