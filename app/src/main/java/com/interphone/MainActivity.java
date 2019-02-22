@@ -3,16 +3,19 @@ package com.interphone;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -33,6 +36,7 @@ import com.interphone.services.AudioService;
 import com.interphone.services.SocketServices;
 import com.interphone.wifi.bean.ApConfig;
 import com.interphone.wifi.bean.ConnectConfig;
+import com.zlandzbt.tools.jv.runtime_permissions.permission.Permissions;
 import com.zlandzbt.tools.jv.utils.UIUtils;
 
 import java.util.ArrayList;
@@ -122,6 +126,32 @@ public class MainActivity extends BaseActivity
         mWifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         initView();
         initEvent();
+        initPermissions();
+    }
+
+    private void initPermissions() {
+        String permission[] = Permissions.getAllUsesPermissionsNameInManifest(this);
+        if (permission == null || permission.length <= 0) {
+            UIUtils.alertDialog(this, "提示", "获取权限失败，请手动赋予权限", new UIUtils.IAlertDialogCallBack() {
+                @Override
+                public void yes(DialogInterface dialogInterface, int which) {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                }
+
+                @Override
+                public void no(DialogInterface dialogInterface, int which) {
+                    finish();
+                }
+            });
+
+            return;
+        }
+        Permissions.with(this)
+                .permissions(permission, 0)
+                .repeat(true)
+                .request();
     }
 
     private void getLocalIp() {
