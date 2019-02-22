@@ -7,6 +7,7 @@ import com.dgk.myaudiodemo.util.Speex;
 import com.interphone.BaseActivity;
 import com.interphone.audio.IAudioConfig;
 import com.interphone.audio.IAudioPlayer;
+import com.zlandzbt.tools.jv.utils.LogUtils;
 
 public class AudioPlayerManager implements IAudioPlayer, IAudioConfig {
 
@@ -44,16 +45,16 @@ public class AudioPlayerManager implements IAudioPlayer, IAudioConfig {
                 Log.e(TAG, "不能够查询音频输出的性能");
                 break;
             default:
-                Log.i(TAG, "AudioTrack的音频缓冲区的最小尺寸(与本机硬件有关)：" + playerBufferSize);
+                LogUtils.i(TAG, "AudioTrack的音频缓冲区的最小尺寸(与本机硬件有关)：" + playerBufferSize);
                 break;
         }
         mAudioPlayer = new AudioTrack(streamType, sampleRateInHz, channelConfig, audioFormat, playerBufferSize, defaultMode);
         switch (mAudioPlayer.getState()) {
             case AudioTrack.STATE_INITIALIZED:
-                Log.i(TAG, "AudioTrack实例初始化成功!");
+                LogUtils.i(TAG, "AudioTrack实例初始化成功!");
                 break;
             case AudioTrack.STATE_NO_STATIC_DATA:
-                Log.i(TAG, "AudioTrack实例初始化成功，目前没有静态数据输入!");
+                LogUtils.i(TAG, "AudioTrack实例初始化成功，目前没有静态数据输入!");
                 break;
             default:
                 Log.e(TAG, "AudioTrack实例初始化失败!");
@@ -80,7 +81,7 @@ public class AudioPlayerManager implements IAudioPlayer, IAudioConfig {
                         break;
                 }
             } else {
-                Log.i(TAG, "成功写入数据：" + size + " Shorts");
+                LogUtils.i(TAG, "成功写入数据：" + size + " Shorts");
                 mAudioPlayer.play();
             }
         }

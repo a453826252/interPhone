@@ -13,6 +13,7 @@ import com.interphone.audio.IAudioConfig;
 import com.interphone.audio.IAudioMessage;
 import com.interphone.audio.IAudioRecord;
 import com.interphone.headset.bluetooth.BlueToothHeadeSetManager;
+import com.zlandzbt.tools.jv.utils.LogUtils;
 import com.zlandzbt.tools.jv.utils.ThreadUtils;
 import com.zlandzbt.tools.jv.utils.UIUtils;
 
@@ -69,12 +70,12 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
                 Log.e(TAG, "不能查询音频输入性能");
                 break;
             default:
-                Log.i(TAG, "尺寸:" + mRecordBufferSize);
+                LogUtils.i(TAG, "尺寸:" + mRecordBufferSize);
         }
         mAudioRecord = new AudioRecord(audioSource, sampleRateInHz, channelConfig, audioFormat, mRecordBufferSize);
         switch (mAudioRecord.getState()) {
             case AudioRecord.STATE_INITIALIZED:
-                Log.i(TAG, "获取录音实例成功");
+                LogUtils.i(TAG, "获取录音实例成功");
                 break;
             default:
                 Log.e(TAG, "获取录音实例失败");
@@ -125,7 +126,7 @@ public class AudioRecordManager implements IAudioConfig, IAudioRecord {
             @Override
             public void run() {
                 mAudioRecord.startRecording();
-                Log.i(TAG, "开始录制音频");
+                LogUtils.i(TAG, "开始录制音频");
                 mIAudioMessage.startToRecord();
                 while (isWorking) {
                     if (mAudioRecord == null) {

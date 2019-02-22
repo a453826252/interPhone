@@ -9,6 +9,7 @@ import com.interphone.audio.IAudioPlayer;
 import com.interphone.audio.impl.AudioPlayerManager;
 import com.interphone.socket.impl.SocketMessageImpl;
 import com.interphone.wifi.bean.ConnectConfig;
+import com.zlandzbt.tools.jv.utils.LogUtils;
 import com.zlandzbt.tools.jv.utils.ThreadUtils;
 
 import java.net.DatagramPacket;
@@ -39,7 +40,7 @@ public class SocketServerReceive {
     }
 
     public void startToReceive() {
-        Log.i(TAG, "开启接收socket");
+        LogUtils.i(TAG, "开启接收socket");
         try {
             if (mDatagramSocket == null) {
                 mDatagramSocket = new DatagramSocket(null);
@@ -68,7 +69,7 @@ public class SocketServerReceive {
 
     public void closeServer() {
         isReceive = false;
-        Log.i(TAG, "关闭数据接收服务");
+        LogUtils.i(TAG, "关闭数据接收服务");
         ThreadUtils.releaseThreadPool(false);
         new Handler().postDelayed(new Runnable() {
             @Override
@@ -93,7 +94,7 @@ public class SocketServerReceive {
                 //本机发出的，丢弃
                 continue;
             }
-            Log.i(TAG, "接收到数据");
+            LogUtils.i(TAG, "接收到数据");
             byte[] data = packet.getData();
             mPlayer.play(data, data.length);
         }

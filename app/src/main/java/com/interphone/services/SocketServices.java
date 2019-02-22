@@ -21,6 +21,7 @@ public class SocketServices extends Service {
     }
 
     public class SocketBinder extends Binder {
+        //开启client接收器就可以
         public void openServerReceiveSocket(IServer server) {
             if (server != null) {
                 mIServer = server;
