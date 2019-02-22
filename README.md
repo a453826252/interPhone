@@ -10,6 +10,8 @@
 本例子参考了[https://github.com/KevinDGK/MyAudioDemo/](https://github.com/KevinDGK/MyAudioDemo/)这个项目中对`Speex`的使用  
 同时也是基于网上的资料完成
 
+`tools_java`是我的另一仓库，项目地址[戳这里](https://github.com/a453826252/android_tools_library_java)
+
 ###### 作者开发这个例子的初衷是想在朋友骑车出行之间，用于和朋友的沟通，因为骑车有时风太大或者在戴头盔，听不到朋友在说什么，使用这个项目加上耳机就会很方便，你们懂得
 ###### 因为本例中使用`WIFI`网络，所以在距离上有比较大的限制，最好各终端在10米之内，但是没有经过测试
 ### 本例中没有经过严格测试，因此在使用过程中出现BUG是很正常的事情
